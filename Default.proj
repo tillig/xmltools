@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="All" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+	<!--
+		* Standard build = msbuild Default.proj
+		* Release build = msbuild Default.proj /p:Configuration=Release
+	-->
+	<PropertyGroup>
+		<Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+		<BuildDir>..\build</BuildDir>
+		<BuildBinDir>$(BuildDir)\bin</BuildBinDir>
+		<BuildLogDir>$(BuildDir)\log</BuildLogDir>
+		<BuildPackageDir>$(BuildDir)\package</BuildPackageDir>
+	</PropertyGroup>
+	<ItemGroup>
+		<CleanFolders Include="$(BuildDir)"/>
+		<CleanFolders Include="UnitTests\bin"/>
+		<CleanFolders Include="UnitTests\obj"/>
+		<CleanFolders Include="ValidateUtility\bin"/>
+		<CleanFolders Include="ValidateUtility\obj"/>
+		<CleanFolders Include="WellformedUtility\bin"/>
+		<CleanFolders Include="WellformedUtility\obj"/>
+		<CleanFolders Include="XPathUtility\bin"/>
+		<CleanFolders Include="XPathUtility\obj"/>
+		<CleanFolders Include="XsltUtility\bin"/>
+		<CleanFolders Include="XsltUtility\obj"/>
+		<CleanFolders Include="TestResults"/>
+	</ItemGroup>
+	<Import Project="$(MSBuildExtensionsPath)\MSBuildCommunityTasks\MSBuild.Community.Tasks.Targets"/>
+	<Target Name="All">
+		<CallTarget Targets="Clean;Compile;Test"/>
+		<CallTarget Targets="Package" Condition="'$(Configuration)' == 'Release'"/>
+		<Message Text="Build complete."/>
+	</Target>
+	<Target Name="Compile">
+		<MakeDir Directories="$(BuildDir);$(BuildBinDir);$(BuildLogDir)"/>
+		<MSBuild Projects="XmlTools.sln" Properties="Configuration=$(Configuration)"/>
+		<CreateItem Include="ValidateUtility\bin\$(Configuration)\**;WellformedUtility\bin\$(Configuration)\**;XPathUtility\bin\$(Configuration)\**;XsltUtility\bin\$(Configuration)\**">
+			<Output TaskParameter="Include" ItemName="BuildOutput"/>
+		</CreateItem>
+		<Copy SourceFiles="@(BuildOutput)" DestinationFolder="$(BuildBinDir)"/>
+	</Target>
+	<Target Name="Clean">
+		<RemoveDir Directories="@(CleanFolders)"/>
+	</Target>
+	<Target Name="Test">
+		<CreateProperty Value="$(BuildLogDir)\TestResults.trx">
+			<Output PropertyName="UnitTestResultsFile" TaskParameter="Value"/>
+		</CreateProperty>
+		<Delete Files="$(UnitTestResultsFile)"/>
+		<Exec Command="mstest.exe /testcontainer:&quot;UnitTests\bin\$(Configuration)\UnitTests.dll&quot; /resultsfile:&quot;$(UnitTestResultsFile)&quot;"/>
+	</Target>
+	<Target Name="Package">
+		<MakeDir Directories="$(BuildPackageDir)"/>
+		<CreateItem Include="$(BuildBinDir)\*.exe">
+			<Output ItemName="BinaryPackageFiles" TaskParameter="Include"/>
+		</CreateItem>
+		<Zip Files="@(BinaryPackageFiles)" ZipFileName="$(BuildPackageDir)\XmlTools.zip" Flatten="true"/>
+	</Target>
+</Project>
